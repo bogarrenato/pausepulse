@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../bloc/apps/apps_bloc.dart';
 import '../bloc/apps/apps_event.dart';
@@ -91,29 +92,62 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Icon(
               Icons.security,
-              size: 64,
+              size: 80,
               color: Colors.orange,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             const Text(
-              'Permission Required',
+              'Permissions Required',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'This app needs notification access to manage your app notifications.',
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'This app needs permission to:',
               style: TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('• Access installed applications'),
+                Text('• Manage notification settings'),
+                Text('• Read device storage (Android only)'),
+              ],
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                context.read<AppsBloc>().add(const LoadApps());
-              },
-              child: const Text('Grant Permission'),
+            Column(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    context.read<AppsBloc>().add(const LoadApps());
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Grant Permissions'),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () async {
+                    // Direct user to app settings
+                    await openAppSettings();
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Open App Settings'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'If permissions are denied, you can manually enable them in your device settings.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

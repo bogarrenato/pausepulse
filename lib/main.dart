@@ -6,8 +6,13 @@ import 'presentation/app/app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize dependency injection
-  await configureDependencies();
+  try {
+    // Initialize dependency injection
+    await configureDependencies();
+  } catch (e) {
+    // If dependency injection fails, continue with app but show error
+    debugPrint('Dependency injection failed: $e');
+  }
   
   runApp(const PausePulseApp());
 }

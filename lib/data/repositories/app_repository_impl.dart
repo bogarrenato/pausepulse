@@ -50,34 +50,85 @@ class AppRepositoryImpl implements AppRepository {
   }
 
   Future<List<AppInfo>> _getIOSMacOSApps() async {
-    // For iOS/macOS, we'll create mock data since we can't access all installed apps
-    // In a real implementation, you would use platform-specific methods
-    return [
-      const AppInfo(
-        packageName: 'com.apple.mobilemail',
-        appName: 'Mail',
-        iconPath: null,
-        isNotificationEnabled: true,
-      ),
-      const AppInfo(
-        packageName: 'com.apple.MobileSMS',
-        appName: 'Messages',
-        iconPath: null,
-        isNotificationEnabled: true,
-      ),
-      const AppInfo(
-        packageName: 'com.apple.mobilecal',
-        appName: 'Calendar',
-        iconPath: null,
-        isNotificationEnabled: true,
-      ),
-      const AppInfo(
-        packageName: 'com.apple.weather',
-        appName: 'Weather',
-        iconPath: null,
-        isNotificationEnabled: true,
-      ),
-    ];
+    // For iOS/macOS, we'll create representative mock data since we can't access all installed apps
+    // In a real implementation, you would use platform-specific methods or limit to specific apps
+    try {
+      return [
+        const AppInfo(
+          packageName: 'com.apple.mobilemail',
+          appName: 'Mail',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.mobilesafari',
+          appName: 'Safari',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.mobilephone',
+          appName: 'Phone',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.MobileSMS',
+          appName: 'Messages',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.camera',
+          appName: 'Camera',
+          iconPath: null,
+          isNotificationEnabled: false,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.Photos',
+          appName: 'Photos',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.Music',
+          appName: 'Music',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.weather',
+          appName: 'Weather',
+          iconPath: null,
+          isNotificationEnabled: false,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.reminders',
+          appName: 'Reminders',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+        const AppInfo(
+          packageName: 'com.apple.calendar',
+          appName: 'Calendar',
+          iconPath: null,
+          isNotificationEnabled: true,
+          version: '1.0',
+        ),
+      ];
+    } catch (e) {
+      // Return empty list if there's any error
+      return [];
+    }
   }
 
   @override
@@ -112,18 +163,58 @@ class AppRepositoryImpl implements AppRepository {
   @override
   Future<bool> hasPermissions() async {
     if (Platform.isAndroid) {
-      // On Android, we need notification access permission
-      return await Permission.notification.isGranted;
+      // On Android, we need multiple permissions
+      final notificationStatus = await Permission.notification.status;
+      final storageStatus = await Permission.storage.status;
+      
+      // For Android 11+ (API 30+), we also need to check if we can query all packages
+      return notificationStatus.isGranted && storageStatus.isGranted;
     } else {
-      // On iOS/macOS, notifications are handled differently
-      return await Permission.notification.isGranted;
+      // On iOS/macOS, we only need notification permission
+      final notificationStatus = await Permission.notification.status;
+      return notificationStatus.isGranted;
     }
   }
 
   @override
   Future<bool> requestPermissions() async {
-    final status = await Permission.notification.request();
-    return status.isGranted;
+    if (Platform.isAndroid) {
+      // Request multiple permissions for Android
+      final Map<Permission, PermissionStatus> statuses = await [
+        Permission.notification,
+        Permission.storage,
+      ].request();
+      
+      final notificationGranted = statuses[Permission.notification]?.isGranted == true;
+      final storageGranted = statuses[Permission.storage]?.isGranted == true;
+      
+      // If any permission is permanently denied, open app settings
+      if (statuses[Permission.notification]?.isPermanentlyDenied == true ||
+          statuses[Permission.storage]?.isPermanentlyDenied == true) {
+        await openAppSettings();
+        // Re-check permissions after returning from settings
+        final recheckStatuses = await [
+          Permission.notification,
+          Permission.storage,
+        ].request();
+        return recheckStatuses[Permission.notification]?.isGranted == true &&
+               recheckStatuses[Permission.storage]?.isGranted == true;
+      }
+      
+      return notificationGranted && storageGranted;
+    } else {
+      // For iOS/macOS, request notification permission
+      final status = await Permission.notification.request();
+      
+      if (status.isPermanentlyDenied) {
+        await openAppSettings();
+        // Re-check permission after returning from settings
+        final recheckStatus = await Permission.notification.status;
+        return recheckStatus.isGranted;
+      }
+      
+      return status.isGranted;
+    }
   }
 
   Map<String, bool> _getStoredSettings() {
